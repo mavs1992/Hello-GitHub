@@ -79,7 +79,7 @@ int main(int argc,char* argv[])
     sum1 = 0;
     for(int i = 1; i< k;i++){
       MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, i,0);
-      std::cout << "The sum1 is " << sum1 << std::endl;
+       std::cout << "The sum "<< i <<" is " << sum1 << std::endl;
       total = total + sum1;
     }
 
