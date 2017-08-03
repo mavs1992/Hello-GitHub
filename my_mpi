@@ -1,0 +1,128 @@
+//first.cpp Adding numbers using two nodes C++ version
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <iostream>
+
+#include "mpi.h"
+
+//always use argc and argv, as mpirun will pass the appropriate parms.
+int main(int argc,char* argv[])
+{
+   MPI::Init(argc,argv);
+
+  // What is my ID and how many processes are in this pool?
+  int myid = MPI::COMM_WORLD.Get_rank();
+  int numproc = MPI::COMM_WORLD.Get_size();
+  std::cout << "This is id " << myid << " out of " << numproc << std::endl;
+
+  long long a = 1664525;
+  long long m = 4294967296;
+  long n = 65536;
+  long long c = 1013904223;
+  long long seed = 12345;
+  long long p0;
+
+  // 2 process
+  int k  = numproc;
+  // int N = 1000;
+  int sum0,sum1,total;
+  long A = 1;
+  long myran;
+  for(int e = 0; e < k;e ++){
+      A = (A * a)% m;
+ }
+  unsigned long long C = c*(a*a*a + a*a + a +1)%m;
+  
+  // Get the number the user wants
+   int N = atoi(argv[1]);
+
+  if (myid == 0) 
+{
+    // generate k random number
+    for(int i =0;i < k;i++)
+     {
+      myran = (a * seed + c)%m;
+
+      if( i == 0)
+	{
+	p0 = myran;
+	} 
+      else 
+	{
+      // Master sends 'N' to slave
+       MPI::COMM_WORLD.Send(&myran, 1, MPI::LONG, i,0);
+	}
+      seed = myran;
+     }
+     
+     sum0 = 0;
+    for(int i = 0;i < (double)N / k; i ++){
+      myran = (A * p0 + C)% m;
+
+      int ix = myran % n;
+      int iy = myran / n;
+
+      double x = (double)ix *2 / n -1;
+      double y = (double)iy *2 / n -1;
+
+      if (x*x + y*y <=1){
+	sum0++;
+      }
+
+      p0 = myran;
+    }
+
+    std::cout << "The sum0 is " << sum0 << std::endl;
+ //Master waits to receive 'sum1' from slave
+    total = sum0;
+    sum1 = 0;
+    for(int i = 1; i< k;i++){
+      MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, i,0);
+      std::cout << "The sum1 is " << sum1 << std::endl;
+      total = total + sum1;
+    }
+
+    
+    
+    double pi = (double)total / N * 4;
+
+    std::cout << "The pi is " << pi << std::endl;
+  } 
+  
+  else {
+
+    // Slave waits to receive 'N' from master
+    long myran;
+    MPI::COMM_WORLD.Recv(&myran, 1, MPI::LONG, 0, 0);
+    int sum1 = 0;
+    seed = myran;
+    int e = 0;
+    if( N % k > myid){
+      e = N / k + 1;
+    } 
+    else {
+      e = N / k;
+    }
+    for(int i =0;i < e; i++){
+      
+      myran = (A * seed + C)% m;
+
+      int ix = myran % n;
+      int iy = myran / n;
+
+      double x = (double)ix *2 / n -1;
+      double y = (double)iy *2 / n -1;
+
+      if (x*x + y*y <=1){
+	sum1++;
+      }
+
+      seed = myran;
+    }
+
+    // Slave sends 'sum1' to master
+    MPI::COMM_WORLD.Send(&sum1, 1, MPI_INT, 0, 0);
+  }
+  MPI::Finalize();
+}
