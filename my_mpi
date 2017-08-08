@@ -7,162 +7,160 @@
 #include "mpi.h"
 
 //always use argc and argv, as mpirun will pass the appropriate parms.
-int main(int argc,char* argv[])
+int main(int argc, char* argv[])
 {
 
-  double start,finish,t1,t2;
-  start = MPI::Wtime();
-  std::cout << "start time :  " << start << std::endl;
+	double start, finish, t1, t2;
+	start = MPI::Wtime();
+	std::cout << "start time :  " << start << std::endl;
 
-  MPI::Init(argc,argv);
+	MPI::Init(argc, argv);
 
-  // What is my ID and how many processes are in this pool?
-  int myid = MPI::COMM_WORLD.Get_rank();
-  int numproc = MPI::COMM_WORLD.Get_size();
-  std::cout << "This is id " << myid << " out of " << numproc << std::endl;
+	// What is my ID and how many processes are in this pool?
+	int myid = MPI::COMM_WORLD.Get_rank();
+	int numproc = MPI::COMM_WORLD.Get_size();
+	std::cout << "This is id " << myid << " out of " << numproc << std::endl;
 
-  // Get the number the user wants
-  int N = atoi(argv[1]);
+	// Get the number the user wants
+	int N = atoi(argv[1]);
 
-  long long a = 1664525;
-  long long m = 4294967296;
-  long n = 65536;
-  long long c = 1013904223;
-  long long seed = 12345;
-  long long p0;
+	long long a = 1664525;
+	long long m = 4294967296;
+	long n = 65536;
+	long long c = 1013904223;
+	long long seed = 12345;
+	long long p0;
 
-  // k process
-  int k  = numproc;
-  int sum0,sum1,total;
-  long A = 1;
-  long myran;
-  // calculate A
-  for(int e = 0; e < k;e ++){
-      A = (A * a)% m;
-  }
-  std::cout << "A  " << A << std::endl;
-
-  // calculate C
-  unsigned long C = 0;
-  unsigned long ak;
-  for(int i =0 ; i < k ;i ++){
-    ak = 1;
-    for(int j = 0; j < i; j++){
-      ak = ak * a;
-    }
-    C = C + ak;
-  }
-  C = c*C%m;
-  std::cout << "C  " << C << std::endl;
-  
-
-  if (myid == 0) 
-{
-
-  t1 = MPI::Wtime();
-  std::cout << "t1 time :  " << t1 << std::endl;
-    // generate k random number
-    for(int i =0;i < k;i++)
-     {
-      myran = (a * seed + c)%m;
-
-      if( i == 0)
-	{
-	p0 = myran;
-	} 
-      else 
-	{
-      // Master sends 'N' to slave
-       MPI::COMM_WORLD.Send(&myran, 1, MPI::LONG, i,0);
+	// k process
+	int k = numproc;
+	int sum0, sum1, total;
+	long A = 1;
+	long myran;
+	// calculate A
+	for (int e = 0; e < k; e++) {
+		A = (A * a) % m;
 	}
-      seed = myran;
-     }
+	std::cout << "A  " << A << std::endl;
 
-    sum0 = 0;
-    for(int i = 0;i < (double)N / k; i ++){
-      myran = (A * p0 + C)% m;
-
-      int ix = myran % n;
-      int iy = myran / n;
-
-      double x = (double)ix *2 / n -1;
-      double y = (double)iy *2 / n -1;
-
-      if (x*x + y*y <=1){
-	sum0++;
-      }
-
-      p0 = myran;
-    }
-
-    std::cout << "The sum0 is " << sum0 << std::endl;
-
-    t2 = MPI::Wtime();
-    std::cout << "t2 time :  " << t2 << std::endl;
+	// calculate C
+	unsigned long C = 0;
+	unsigned long ak;
+	for (int i = 0; i < k; i++) {
+		ak = 1;
+		for (int j = 0; j < i; j++) {
+			ak = ak * a;
+		}
+		C = C + ak;
+	}
+	C = c*C%m;
+	std::cout << "C  " << C << std::endl;
 
 
-    //Master waits to receive 'sum1' from slave
-    total = sum0;
-    sum1 = 0;
-    for(int i = 1; i< k;i++){
-      MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, i,0);
-      std::cout << "The sum "<< i <<" is " << sum1 << std::endl;
-      total = total + sum1;
-    }
+	if (myid == 0)
+	{
 
-    
-    
-    double pi = (double)total / N * 4;
+		t1 = MPI::Wtime();
+		std::cout << "t1 time :  " << t1 << std::endl;
+		// generate k random number
+		for (int i = 0; i < k; i++)
+		{
+			myran = (a * seed + c) % m;
 
-    std::cout << "The pi is " << pi << std::endl;
+			if (i == 0)
+			{
+				p0 = myran;
+			}
+			else
+			{
+				// Master sends 'N' to slave
+				MPI::COMM_WORLD.Send(&myran, 1, MPI::LONG, i, 0);
+			}
+			seed = myran;
+		}
 
-    finish = MPI::Wtime();
-    std::cout << "finish time :  " << finish << std::endl;
-    double t = finish - start;
-    if( k == 1){
-      double f = (t - t2 + t1) / t;
-      std::cout << "ts :  " << t << std::endl;
-      std::cout << "f :  " << f << std::endl;
-    } else {
-      std::cout << "tp :  " << t << std::endl;
-    }
-  } 
+		sum0 = 0;
+		for (int i = 0; i < (double)N / k; i++) {
+			myran = (A * p0 + C) % m;
 
-    
+			int ix = myran % n;
+			int iy = myran / n;
 
-  else {
+			double x = (double)ix * 2 / n - 1;
+			double y = (double)iy * 2 / n - 1;
 
-    // Slave waits to receive 'N' from master
-    long myran;
-    MPI::COMM_WORLD.Recv(&myran, 1, MPI::LONG, 0, 0);
-    int sum1 = 0;
-    seed = myran;
-    int e = 0;
-    if( N % k > myid){
-      e = N / k + 1;
-    } 
-    else {
-      e = N / k;
-    }
-    for(int i =0;i < e; i++){
-      
-      myran = (A * seed + C)% m;
+			if (x*x + y*y <= 1) {
+				sum0++;
+			}
 
-      int ix = myran % n;
-      int iy = myran / n;
+			p0 = myran;
+		}
 
-      double x = (double)ix *2 / n -1;
-      double y = (double)iy *2 / n -1;
+		std::cout << "The sum0 is " << sum0 << std::endl;
 
-      if (x*x + y*y <=1){
-	sum1++;
-      }
+		t2 = MPI::Wtime();
+		std::cout << "t2 time :  " << t2 << std::endl;
 
-      seed = myran;
-    }
 
-    // Slave sends 'sum1' to master
-    MPI::COMM_WORLD.Send(&sum1, 1, MPI_INT, 0, 0);
-  }
-  MPI::Finalize();
+		//Master waits to receive 'sum1' from slave
+		total = sum0;
+		sum1 = 0;
+		for (int i = 1; i < k; i++) {
+			MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, i, 0);
+			std::cout << "The sum " << i << " is " << sum1 << std::endl;
+			total = total + sum1;
+		}
+
+		double pi = (double)total / N * 4;
+
+		std::cout << "The pi is " << pi << std::endl;
+
+		finish = MPI::Wtime();
+		std::cout << "finish time :  " << finish << std::endl;
+		double t = finish - start;
+		if (k == 1) {
+			double f = (t - t2 + t1) / t;
+			std::cout << "ts :  " << t << std::endl;
+			std::cout << "f :  " << f << std::endl;
+		}
+		else {
+			std::cout << "tp :  " << t << std::endl;
+		}
+	}
+
+
+	else {
+
+		// Slave waits to receive 'N' from master
+		long myran;
+		MPI::COMM_WORLD.Recv(&myran, 1, MPI::LONG, 0, 0);
+		int sum1 = 0;
+		seed = myran;
+		int e = 0;
+		if (N % k > myid) {
+			e = N / k + 1;
+		}
+		else {
+			e = N / k;
+		}
+		for (int i = 0; i < e; i++) {
+
+			myran = (A * seed + C) % m;
+
+			int ix = myran % n;
+			int iy = myran / n;
+
+			double x = (double)ix * 2 / n - 1;
+			double y = (double)iy * 2 / n - 1;
+
+			if (x*x + y*y <= 1) {
+				sum1++;
+			}
+
+			seed = myran;
+		}
+
+		// Slave sends 'sum1' to master
+		MPI::COMM_WORLD.Send(&sum1, 1, MPI_INT, 0, 0);
+	}
+	MPI::Finalize();
 }
